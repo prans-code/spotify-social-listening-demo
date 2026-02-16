@@ -12,6 +12,8 @@ from sklearn.cluster import KMeans
 
 
 st.set_page_config(page_title="Social Listening Dashboard", layout="wide")
+st.sidebar.caption(f"Running file: {__file__}")
+st.sidebar.caption("Build: v1.0.3")
 
 BASE_DIR = Path(__file__).resolve().parent
 DATA_DIR = BASE_DIR / "data"
@@ -204,6 +206,8 @@ def apply_keyword_filter(df: pd.DataFrame, keywords: list[str]) -> pd.DataFrame:
 # ---------------------------
 st.title("Sentiment-First Social Listening Dashboard")
 st.caption("Interactive Streamlit demo — switch clients, filter, drill down, export.")
+
+st.write("✅ app.py loaded correctly")
 
 if "driver_keywords" not in st.session_state:
     st.session_state["driver_keywords"] = []  # selected keywords from Drivers tab
