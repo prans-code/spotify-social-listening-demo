@@ -564,28 +564,3 @@ with tab5:
 
         st.markdown("#### Sentiment mix comparison")
         st.plotly_chart(px.bar(dist, x="sentiment_label", y="pct", color="period", barmode="group"), use_container_width=True)
-
-        import streamlit as st
-
-st.set_page_config(page_title="Social Listening Dashboard", layout="wide")
-
-st.title("Social Listening Dashboard")
-st.caption("Use the pages on the left (Overview, Trends, Drivers, Explorer, Compare).")
-
-st.markdown
-
-("""### How to add a new client
-Create a folder:
-
-`data/clients/<ClientName>/posts.csv`
-
-Minimum required columns:
-- `created_utc` (datetime or unix timestamp)
-- `text` (post content)
-
-Recommended columns:
-- `platform`, `subreddit`
-- `sentiment_label` (positive/neutral/negative)
-- `sentiment_score`, `sentiment_confidence`
-- `clean_text`
-""")
