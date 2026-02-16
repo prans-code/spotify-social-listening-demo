@@ -1,0 +1,154 @@
+from __future__ import annotations
+
+import argparse
+import json
+import re
+import subprocess
+from pathlib import Path
+
+import pandas as pd
+from tqdm import tqdm
+from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
+
+from youtube_comment_downloader import YoutubeCommentDownloader
+
+
+BASE_DIR = Path(__file__).resolve().parents[1]
+CLIENTS_DIR = BASE_DIR / "data" / "clients"
+
+
+def vader_label(compound: float) -> str:
+    if compound >= 0.05:
+        return "positive"
+    if compound <= -0.05:
+        return "negative"
+    return "neutral"
+
+
+def clean_text(s: str) -> str:
+    s = (s or "").lower()
+    s = re.sub(r"http\S+", " ", s)
+    s = re.sub(r"[^a-z0-9\s]", " ", s)
+    s = re.sub(r"\s+", " ", s).strip()
+    return s
+
+
+def yt_search_video_ids(query: str, max_videos: int) -> list[str]:
+    """
+    Uses yt-dlp to get video IDs from a YouTube search without API key.
+    Requires yt-dlp to be installed (pip install yt-dlp).
+    """
+    cmd = [
+        "yt-dlp",
+        f"ytsearch{max_videos}:{query}",
+        "--dump-single-json",
+        "--skip-download",
+        "--no-warnings",
+    ]
+    out = subprocess.check_output(cmd, text=True, encoding="utf-8")
+    data = json.loads(out)
+
+    vids = []
+    for e in data.get("entries", []) or []:
+        vid = e.get("id")
+        if vid:
+            vids.append(vid)
+    return vids[:max_videos]
+
+
+def fetch_comments(video_id: str, max_comments: int) -> list[dict]:
+    downloader = YoutubeCommentDownloader()
+    url = f"https://www.youtube.com/watch?v={video_id}"
+
+    # Some versions use sort_by=0/1 (POPULAR/RECENT). If it errors, it will be caught by caller.
+    gen = downloader.get_comments_from_url(url, sort_by=1)
+
+    rows = []
+    for c in gen:
+        text = (c.get("text") or "").strip()
+        if not text:
+            continue
+
+        rows.append(
+            {
+                "text": text,
+                "like_count": c.get("votes", 0),
+                "author": c.get("author", ""),
+                "video_id": video_id,
+                "url": url,
+            }
+        )
+
+        if len(rows) >= max_comments:
+            break
+    return rows
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--client", required=True, help="Client folder name under data/clients/")
+    ap.add_argument("--query", required=True, help='YouTube search query, e.g. "netflix subscription"')
+    ap.add_argument("--videos", type=int, default=8, help="Videos to pull from search")
+    ap.add_argument("--comments", type=int, default=150, help="Comments per video (approx)")
+    ap.add_argument("--append", action="store_true", help="Append to existing posts.csv instead of overwrite")
+    args = ap.parse_args()
+
+    client_dir = CLIENTS_DIR / args.client
+    client_dir.mkdir(parents=True, exist_ok=True)
+
+    analyzer = SentimentIntensityAnalyzer()
+
+    video_ids = yt_search_video_ids(args.query, args.videos)
+    if not video_ids:
+        raise RuntimeError("No videos found. Try a broader query.")
+
+    all_rows = []
+    for vid in tqdm(video_ids, desc=f"{args.client} | videos"):
+        try:
+            comments = fetch_comments(vid, args.comments)
+        except Exception:
+            continue
+
+        for c in comments:
+            text = c["text"]
+            score = analyzer.polarity_scores(text)["compound"]
+
+            all_rows.append(
+                {
+                    "client": args.client,
+                    "platform": "youtube",
+                    "subreddit": "youtube",
+                    # Hard-scrape doesn't reliably provide timestamps -> use current time for demo
+                    "created_utc": pd.Timestamp.utcnow(),
+                    "text": text,
+                    "clean_text": clean_text(text),
+                    "sentiment_score": float(score),
+                    "sentiment_label": vader_label(float(score)),
+                    "sentiment_confidence": float(abs(score)),
+                    "url": c["url"],
+                    "query": args.query,
+                    "like_count": c.get("like_count", 0),
+                    "author": c.get("author", ""),
+                    "video_id": c.get("video_id", ""),
+                }
+            )
+
+    df_new = pd.DataFrame(all_rows)
+    if len(df_new) == 0:
+        raise RuntimeError("No comments collected. Try a different query or lower limits.")
+
+    out_path = client_dir / "posts.csv"
+
+    if args.append and out_path.exists():
+        df_old = pd.read_csv(out_path)
+        df_out = pd.concat([df_old, df_new], ignore_index=True)
+        df_out = df_out.drop_duplicates(subset=["platform", "video_id", "text"], keep="first")
+    else:
+        df_out = df_new
+
+    df_out.to_csv(out_path, index=False, encoding="utf-8")
+    print(f"✅ Wrote {len(df_new):,} new rows. Total in {out_path}: {len(df_out):,}")
+
+
+if __name__ == "__main__":
+    main()

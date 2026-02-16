@@ -1,0 +1,9 @@
+{
+  "platforms": ["reddit"],
+  "reddit": {
+    "subreddits": ["netflix", "television", "cordcutters", "movies"],
+    "queries": ["netflix", "netflix app", "netflix subscription", "netflix ads", "netflix quality"],
+    "limit_per_query": 200,
+    "time_filter": "year"
+  }
+}

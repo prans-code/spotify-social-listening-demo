@@ -1,0 +1,9 @@
+{
+  "platforms": ["reddit"],
+  "reddit": {
+    "subreddits": ["netflix", "television", "cordcutters", "movies", "netflixbestof", "netflixreleases", "netflixhelp", "netflixpiracy", "netflixswitch", "netflixwhatcha", "netflixandchill", "netflixbargains", "netflixdeals", "netflixdepression", "netflixfamily", "netflixnews", "netflixoriginals", "netflixparenting", "netflixrecommendations", "netflixserbia", "netflixstreaming", "netflixsuggestions", "netflixuk", "netflixus", "netflixwhatchasaying", "netflixwhatchasaying", "netflixwhatchasaying"],
+    "queries": ["netflix", "netflix app", "netflix subscription", "netflix ads", "netflix quality"],
+    "limit_per_query": 200,
+    "time_filter": "year"
+  }
+}
