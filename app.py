@@ -10,7 +10,6 @@ import plotly.express as px
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.cluster import KMeans
 
-
 st.set_page_config(page_title="Social Listening Dashboard", layout="wide")
 st.sidebar.caption(f"Running file: {__file__}")
 st.sidebar.caption("Build: v1.0.3")
